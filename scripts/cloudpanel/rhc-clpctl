@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+#
+# rhc-clpctl — root-side allowlist wrapper around CloudPanel's `clpctl`.
+#
+# Install to /usr/local/bin/rhc-clpctl, owned by root:root, mode 0755, and grant
+# the panel's system user permission to run ONLY this path via sudo:
+#
+#   # /etc/sudoers.d/rhc-clpctl   (visudo -f /etc/sudoers.d/rhc-clpctl)
+#   rhcsolutions_com ALL=(root) NOPASSWD: /usr/local/bin/rhc-clpctl
+#
+# WHY THIS FILE EXISTS.
+# The obvious sudoers rule is `NOPASSWD: /usr/bin/clpctl`, and it is a mistake:
+# it grants the web app every clpctl verb forever, including ones added by future
+# CloudPanel releases. This wrapper is the thing sudo permits, and it re-derives
+# the allowlist here, on the root side. The panel's TypeScript validation is a
+# usability layer; THIS is the security boundary. Assume the caller is hostile.
+#
+# Destructive verbs are refused unless the marker file exists:
+#   touch /etc/rhc-clpctl-allow-destructive
+# That marker is root-owned, so a compromised web app cannot grant itself
+# deletion rights by flipping a database row.
+
+set -euo pipefail
+
+# Binary path and marker path are FIXED whenever we are running under sudo.
+# Honouring $CLPCTL_BIN from a sudo caller would be a root-execution hole the
+# moment anyone adds env_keep to the sudoers rule: point it at /tmp/evil and the
+# wrapper runs that as root. sudo sets SUDO_USER, so we key off it and only allow
+# overrides for direct (test-harness) invocation.
+if [ -n "${SUDO_USER:-}" ] || [ "$(id -u 2>/dev/null || echo 0)" = "0" ]; then
+  CLPCTL="/usr/bin/clpctl"
+  DESTRUCTIVE_MARKER="/etc/rhc-clpctl-allow-destructive"
+else
+  CLPCTL="${CLPCTL_BIN:-/usr/bin/clpctl}"
+  DESTRUCTIVE_MARKER="${CLPCTL_DESTRUCTIVE_MARKER:-/etc/rhc-clpctl-allow-destructive}"
+fi
+
+# Verbs this wrapper will run at all.
+SAFE_COMMANDS="
+site:add:nodejs
+site:add:static
+site:add:php
+site:add:python
+site:add:reverse-proxy
+lets-encrypt:install:certificate
+db:add
+db:export
+user:add
+user:reset:password
+user:list
+cloudflare:update:ips
+vhost-templates:list
+"
+
+# Verbs additionally requiring the root-owned marker file.
+DESTRUCTIVE_COMMANDS="
+site:delete
+user:delete
+user:disable:mfa
+db:import
+site:install:certificate
+"
+
+# Every flag name any allowed command may use. A flag outside this set is refused
+# even if clpctl itself would accept it.
+ALLOWED_FLAGS="
+domainName
+nodejsVersion
+phpVersion
+pythonVersion
+vhostTemplate
+appPort
+siteUser
+siteUserPassword
+reverseProxyUrl
+subjectAlternativeName
+databaseName
+databaseUserName
+databaseUserPassword
+file
+userName
+email
+firstName
+lastName
+password
+role
+sites
+timezone
+status
+privateKey
+certificate
+certificateChain
+force
+"
+
+die() {
+  echo "rhc-clpctl: $*" >&2
+  exit 64
+}
+
+contains_word() {
+  # contains_word <newline-list> <needle>
+  printf '%s\n' "$1" | grep -Fxq -- "$2"
+}
+
+log() {
+  # Best-effort audit trail on the host itself, independent of the panel's DB.
+  command -v logger >/dev/null 2>&1 && logger -t rhc-clpctl -- "$*" || true
+}
+
+[ "$#" -ge 1 ] || die "no command given"
+
+COMMAND="$1"
+shift
+
+# The command must be one literal token from the lists above. No globbing, no
+# substitution, no path.
+if contains_word "$SAFE_COMMANDS" "$COMMAND"; then
+  :
+elif contains_word "$DESTRUCTIVE_COMMANDS" "$COMMAND"; then
+  if [ ! -f "$DESTRUCTIVE_MARKER" ]; then
+    log "DENIED destructive $COMMAND (marker $DESTRUCTIVE_MARKER absent)"
+    die "destructive command '$COMMAND' refused: $DESTRUCTIVE_MARKER does not exist"
+  fi
+else
+  log "DENIED unknown command $COMMAND"
+  die "command not allowed: $COMMAND"
+fi
+
+# Validate every remaining argument. Accepted shapes are exactly:
+#   --flagName=value    (value must not contain control characters)
+#   --force             (the one valueless flag)
+for arg in "$@"; do
+  case "$arg" in
+    --force)
+      continue
+      ;;
+    --*=*)
+      flag="${arg%%=*}"
+      flag="${flag#--}"
+      value="${arg#*=}"
+
+      contains_word "$ALLOWED_FLAGS" "$flag" || die "flag not allowed: --$flag"
+      [ -n "$value" ] || die "empty value for --$flag"
+
+      # Refuse control characters (newlines included) outright.
+      printf '%s' "$value" | LC_ALL=C grep -q '[[:cntrl:]]' && die "control character in --$flag"
+
+      # Per-flag shape checks. These mirror the panel's TypeScript validators so
+      # the root side is never the weaker of the two gates.
+      case "$flag" in
+        file|privateKey|certificate|certificateChain)
+          # Absolute, no traversal, conservative charset.
+          case "$value" in
+            /*) ;;
+            *) die "--$flag must be an absolute path" ;;
+          esac
+          case "$value" in
+            *..*) die "--$flag must not contain '..'" ;;
+          esac
+          printf '%s' "$value" | LC_ALL=C grep -Eq '^[A-Za-z0-9._/-]+$'             || die "--$flag contains characters that are not allowed in a path"
+          ;;
+        domainName|sites|subjectAlternativeName)
+          printf '%s' "$value" | LC_ALL=C grep -Eq '^[A-Za-z0-9.,-]+$'             || die "--$flag must contain only domain characters"
+          ;;
+        siteUser|userName|databaseName|databaseUserName)
+          printf '%s' "$value" | LC_ALL=C grep -Eq '^[A-Za-z0-9._-]+$'             || die "--$flag must contain only [A-Za-z0-9._-]"
+          ;;
+        appPort)
+          printf '%s' "$value" | LC_ALL=C grep -Eq '^[0-9]{1,5}$'             || die "--$flag must be numeric"
+          ;;
+        nodejsVersion|phpVersion|pythonVersion)
+          printf '%s' "$value" | LC_ALL=C grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'             || die "--$flag must be a version number"
+          ;;
+        reverseProxyUrl)
+          printf '%s' "$value" | LC_ALL=C grep -Eq '^https?://[A-Za-z0-9._:/-]+$'             || die "--$flag must be an http(s) URL"
+          ;;
+      esac
+      ;;
+    *)
+      die "unexpected argument: $arg"
+      ;;
+  esac
+done
+
+[ -x "$CLPCTL" ] || die "clpctl not found or not executable at $CLPCTL"
+
+# Log the invocation with password-bearing flags masked.
+SAFE_LOG="$COMMAND"
+for arg in "$@"; do
+  case "$arg" in
+    --siteUserPassword=*|--databaseUserPassword=*|--password=*)
+      SAFE_LOG="$SAFE_LOG ${arg%%=*}=********"
+      ;;
+    *)
+      SAFE_LOG="$SAFE_LOG $arg"
+      ;;
+  esac
+done
+log "RUN $SAFE_LOG (invoked by uid=${SUDO_UID:-unknown} user=${SUDO_USER:-unknown})"
+
+exec "$CLPCTL" "$COMMAND" "$@"

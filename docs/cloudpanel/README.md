@@ -1,0 +1,55 @@
+<p align="center">
+  <a href="https://www.cloudpanel.io" target="_blank">
+    <img src="https://www.cloudpanel.io/assets/images/logo.svg?v=0.0.2">
+  </a>
+</p>
+
+[CloudPanel](https://www.cloudpanel.io) is a free and modern server control panel to configure and manage a server with an obsessive focus on simplicity.
+
+Run **PHP**, **Node.js**, **Static Websites**, **Reverse Proxies** and **Python Applications** in no time on a **High-Performance Technology Stack**.
+
+<p align="center">
+  <a href="https://www.cloudpanel.io" target="_blank">
+    <img src="assets/images/cloudpanel.png?v=0.0.6">
+  </a>
+</p>
+
+## :boom: Highlights
+
+- **Free**
+- **Easy to use**
+- **Community Driven**
+- **Blazing Fast Page Loads - Up to 250x faster**
+- **Secure (free SSL/TLS certificates)**
+- **Cloudflare integration**
+- **High Performance**
+- **Ready to go within 1 minute**
+- **Supports all major clouds**
+- **Ubuntu 24.04 and 22.04, Debian 13, 12 and 11 Support**
+- **Support for X86 and ARM**
+
+## :floppy_disk: Installation
+
+- [Amazon Web Services](https://www.cloudpanel.io/docs/v2/getting-started/amazon-web-services/installation/ami/)
+- [Digital Ocean](https://www.cloudpanel.io/docs/v2/getting-started/digital-ocean/installation/marketplace/)
+- [Hetzner Cloud](https://www.cloudpanel.io/docs/v2/getting-started/hetzner-cloud/installation/installer/)
+- [Google Compute Engine](https://www.cloudpanel.io/docs/v2/getting-started/google-compute-engine/installation/installer/)
+- [Microsoft Azure](https://www.cloudpanel.io/docs/v2/getting-started/microsoft-azure/installation/installer/)
+- [Oracle Cloud](https://www.cloudpanel.io/docs/v2/getting-started/oracle-cloud/installation/installer/)
+- [Vultr](https://www.cloudpanel.io/docs/v2/getting-started/vultr/installation/marketplace/)
+- [Other](https://www.cloudpanel.io/docs/v2/getting-started/other/)
+
+## Discord
+
+<a href="https://discord.cloudpanel.io/"><img src="https://img.shields.io/discord/696694788883349574?label=Discord" alt="Discord"></a>
+
+## :sparkling_heart: Support This Project
+
+* Please star the project
+* Write about **CloudPanel** on platforms like **Twitter**, **Facebook** or **LinkedIn**
+* Follow us on [Twitter](https://twitter.com/cloudpanel_io) and retweet our tweets
+* Write a **Blog** post about **CloudPanel**
+* Give us [Feedback](https://www.cloudpanel.io/feedback/) to improve **CloudPanel**
+* Report [Bugs](https://github.com/cloudpanel-io/cloudpanel-ce/issues) on Github
+* Join our [Discord Server](https://discord.cloudpanel.io/)
+* [Get in touch with us](https://www.cloudpanel.io/contact/) if you have other ideas

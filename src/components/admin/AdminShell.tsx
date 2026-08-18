@@ -11,7 +11,7 @@ import {
   FaBars, FaTimes, FaSignOutAlt, FaEdit, FaCookie, FaSearch, FaList, FaDatabase,
   FaPalette, FaListAlt, FaCloud, FaChevronDown, FaChevronRight, FaTrash, FaSpinner, FaShieldAlt,
   FaPlug, FaBullhorn, FaRobot, FaSyncAlt, FaHistory, FaStore, FaBoxOpen, FaShoppingCart, FaUserFriends,
-  FaCalendarAlt, FaConciergeBell, FaCalendarCheck, FaClock, FaGift, FaLanguage, FaUser,
+  FaCalendarAlt, FaConciergeBell, FaCalendarCheck, FaClock, FaGift, FaLanguage, FaUser, FaServer,
 } from 'react-icons/fa';
 
 interface NavItem {
@@ -28,7 +28,7 @@ const NAV_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   FaHome, FaChartLine, FaCog, FaFileAlt, FaBullhorn, FaStore, FaBoxOpen, FaShoppingCart,
   FaGift, FaUserFriends, FaCalendarAlt, FaCalendarCheck, FaConciergeBell, FaClock, FaImages,
   FaEdit, FaList, FaListAlt, FaPalette, FaLanguage, FaUsers, FaSearch, FaCookie, FaCloud,
-  FaPlug, FaDatabase, FaRobot, FaSyncAlt, FaShieldAlt, FaHistory, FaUser,
+  FaPlug, FaDatabase, FaRobot, FaSyncAlt, FaShieldAlt, FaHistory, FaUser, FaServer,
 };
 
 interface AdminShellProps {
