@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings. A CRLF-committed script fails on Linux with
+# "bad interpreter: /usr/bin/env bash^M", which is a confusing way to discover a
+# line-ending problem on a production host.
+*.sh text eol=lf
+scripts/cloudpanel/rhc-clpctl text eol=lf

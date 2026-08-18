@@ -1,0 +1,18 @@
+# /etc/sudoers.d/rhc-clpctl
+#
+# Install with:  visudo -f /etc/sudoers.d/rhc-clpctl
+# (visudo validates syntax — a malformed sudoers file can lock you out of sudo.)
+#
+# Replace `rhcsolutions_com` with the system user the Next.js panel runs as.
+# Find it with:  ps -o user= -p "$(pgrep -f 'next start' | head -1)"
+#
+# Grant ONLY the wrapper. Do NOT grant /usr/bin/clpctl directly — that hands the
+# web app every clpctl verb, forever, including ones future CloudPanel releases
+# add. The wrapper is what enforces the allowlist.
+
+rhcsolutions_com ALL=(root) NOPASSWD: /usr/local/bin/rhc-clpctl
+
+# Defence in depth: refuse to pass the caller's environment through to the
+# wrapper, so $CLPCTL_BIN and friends can never influence what runs as root.
+Defaults!/usr/local/bin/rhc-clpctl env_reset
+Defaults!/usr/local/bin/rhc-clpctl !setenv
