@@ -19,9 +19,14 @@ const ipBucket = new Map<string, number[]>();
 const accountLastReset = new Map<string, number>();
 
 function getClientIp(req: NextRequest): string {
+  // Behind Cloudflare, cf-connecting-ip is the trustworthy client IP. Prefer it
+  // over the client-spoofable x-forwarded-for so an attacker can't rotate the
+  // header to defeat the reset rate-limit or lock out a victim IP.
+  const cf = req.headers.get('cf-connecting-ip');
+  if (cf) return cf.trim();
   const xff = req.headers.get('x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();
-  return req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
+  return req.headers.get('x-real-ip') || 'unknown';
 }
 
 function ipRateLimited(ip: string): boolean {

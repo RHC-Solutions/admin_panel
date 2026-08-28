@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import fs from "fs";
 import path from "path";
 
 const APPLICATIONS_FILE = path.join((process.env.SHARED_ROOT || process.cwd()), 'cms-data', 'applications.json');
+
+// Defense-in-depth: /api/cms/* is already JWT+role gated in middleware, but this
+// endpoint exposes/mutates applicant PII, so it re-checks admin in-handler too.
+const requireAdmin = async (request: NextRequest) => {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  const role = String((token as any)?.role || '').toLowerCase();
+  return ['admin', 'administrator', 'editor'].includes(role);
+};
 
 const loadApplications = () => {
   try {
@@ -14,10 +23,16 @@ const loadApplications = () => {
 
 const saveApplications = (applications: any[]) => {
   fs.writeFileSync(APPLICATIONS_FILE, JSON.stringify(applications, null, 2));
+  // Applicant PII — keep owner+group only (default umask would leave 644 on the
+  // shared host). See CLAUDE.md permissions table.
+  try { fs.chmodSync(APPLICATIONS_FILE, 0o660); } catch { /* best effort */ }
 };
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const jobId = searchParams.get('jobId');
     const status = searchParams.get('status');
@@ -41,6 +56,9 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { applicationId, status } = body;
     
@@ -67,6 +85,9 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { applicationId } = body;
     
